@@ -38,6 +38,10 @@ class InfobloxBadInputParameter(Exception):
     pass
 
 
+class InfobloxArgumentMismatch(Exception):
+    pass
+
+
 class Infoblox(object):
     """ Implements the following subset of Infoblox IPAM API via REST API
         create_network
@@ -118,7 +122,8 @@ class Infoblox(object):
                 else:
                     r.raise_for_status()
             if len(r_json) == 0:
-                raise InfobloxNotFoundException("No requested network found: " + network)
+                raise InfobloxNotFoundException(
+                    "No requested network found: " + network)
 
             net_ref = r_json[0]['_ref']
             rest_url = self._construct_url(net_ref)
@@ -157,7 +162,8 @@ class Infoblox(object):
             if re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", address):
                 ipv4addr = address
             else:
-                raise InfobloxBadInputParameter('Expected IP or NET address in CIDR format')
+                raise InfobloxBadInputParameter(
+                    'Expected IP or NET address in CIDR format')
         rest_url = self._construct_url('/record:host')
         payload = {
             'ipv4addrs': [{
@@ -229,7 +235,8 @@ class Infoblox(object):
                 else:
                     r.raise_for_status()
             if len(r_json) == 0:
-                raise InfobloxNotFoundException("No requested host found: " + fqdn)
+                raise InfobloxNotFoundException(
+                    "No requested host found: " + fqdn)
 
             host_ref = r_json[0]['_ref']
             if host_ref and \
@@ -247,7 +254,8 @@ class Infoblox(object):
                     else:
                         r.raise_for_status()
             else:
-                raise InfobloxGeneralException("Received unexpected host reference: " + host_ref)
+                raise InfobloxGeneralException(
+                    "Received unexpected host reference: " + host_ref)
         except ValueError:
             raise Exception(r)
         except Exception:
@@ -336,9 +344,11 @@ class Infoblox(object):
                             else:
                                 r.raise_for_status()
                     else:
-                        raise InfobloxGeneralException("Received unexpected host reference: " + host_ref)
+                        raise InfobloxGeneralException(
+                            "Received unexpected host reference: " + host_ref)
                 else:
-                    raise InfobloxNotFoundException("No requested host found: " + host_fqdn)
+                    raise InfobloxNotFoundException(
+                        "No requested host found: " + host_fqdn)
             else:
                 if 'text' in r_json:
                     raise InfobloxGeneralException(r_json['text'])
@@ -384,11 +394,13 @@ class Infoblox(object):
                                 return
                             else:
                                 if 'text' in r_json:
-                                    raise InfobloxGeneralException(r_json['text'])
+                                    raise InfobloxGeneralException(
+                                        r_json['text'])
                                 else:
                                     r.raise_for_status()
                         else:
-                            raise InfobloxNotFoundException("No requested host alias found: " + alias_fqdn)
+                            raise InfobloxNotFoundException(
+                                "No requested host alias found: " + alias_fqdn)
                     else:
                         raise InfobloxGeneralException("Received unexpected host reference: " + host_ref)
                 else:
@@ -432,9 +444,10 @@ class Infoblox(object):
         except Exception:
             raise
 
-    def delete_cname_record(self, fqdn):
+    def delete_cname_record(self, fqdn, canonical):
         """ Implements IBA REST API call to delete IBA cname record
-        :param fqdn: cname in FQDN
+        :param fqdn: CNAME
+        :param canonical: the record pointed to
         """
         rest_url = self._construct_url('/record:cname')
         params = {'name': fqdn, 'view': self.dns_view}
@@ -444,31 +457,38 @@ class Infoblox(object):
                              params=params,
                              verify=self.verify_ssl)
             r_json = r.json()
-            if r.status_code == 200:
-                if len(r_json) > 0:
-                    cname_ref = r_json[0]['_ref']
-                    if cname_ref and re.match("record:cname\/[^:]+:([^\/]+)\/", cname_ref).group(1) == fqdn:
-                        rest_url = self._construct_url(cname_ref)
-                        r = requests.delete(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl)
-                        if r.status_code == 200:
-                            return
-                        else:
-                            if 'text' in r_json:
-                                raise InfobloxGeneralException(r_json['text'])
-                            else:
-                                r.raise_for_status()
-                    else:
-                        raise InfobloxGeneralException("Received unexpected cname record  reference: " + cname_ref)
-                else:
-                    raise InfobloxNotFoundException("No requested cname record found: " + fqdn)
-            else:
+            if r.status_code != 200:
                 if 'text' in r_json:
                     raise InfobloxGeneralException(r_json['text'])
                 else:
                     r.raise_for_status()
+            if len(r_json) == 0:
+                raise InfobloxNotFoundException(
+                    "No requested cname record found: " + fqdn)
+
+            cname_ref = r_json[0]['_ref']
+            if r_json[0]['canonical'] != canonical:
+                raise InfobloxArgumentMismatch(
+                    'Mismatch canonical IN CNAME: expecting %s, %s given' %
+                    (r_json[0]['canonical'], canonical))
+
+            if cname_ref and \
+               re.match("record:cname\/[^:]+:([^\/]+)\/", cname_ref).group(1) == fqdn:
+                rest_url = self._construct_url(cname_ref)
+                r = requests.delete(
+                    url=rest_url,
+                    auth=(self.user, self.password),
+                    verify=self.verify_ssl)
+                if r.status_code == 200:
+                    return
+                else:
+                    if 'text' in r_json:
+                        raise InfobloxGeneralException(r_json['text'])
+                    else:
+                        r.raise_for_status()
+            else:
+                raise InfobloxArgumentMismatch(
+                    "Received unexpected cname record reference: " + cname_ref)
         except ValueError:
             raise Exception(r)
         except Exception:
