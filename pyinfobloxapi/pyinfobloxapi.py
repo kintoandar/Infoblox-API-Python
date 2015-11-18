@@ -444,7 +444,7 @@ class Infoblox(object):
         except Exception:
             raise
 
-    def delete_cname_record(self, fqdn, canonical):
+    def delete_cname_record(self, fqdn, canonical=None):
         """ Implements IBA REST API call to delete IBA cname record
         :param fqdn: CNAME
         :param canonical: the record pointed to
@@ -467,7 +467,7 @@ class Infoblox(object):
                     "No requested cname record found: " + fqdn)
 
             cname_ref = r_json[0]['_ref']
-            if r_json[0]['canonical'] != canonical:
+            if canonical and r_json[0]['canonical'] != canonical:
                 raise InfobloxArgumentMismatch(
                     'Mismatch canonical IN CNAME: expecting %s, %s given' %
                     (r_json[0]['canonical'], canonical))
