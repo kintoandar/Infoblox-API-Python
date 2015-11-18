@@ -217,9 +217,10 @@ class Infoblox(object):
         except Exception:
             raise
 
-    def delete_host_record(self, fqdn):
+    def delete_host_record(self, fqdn, ip=None):
         """ Implements IBA REST API call to delete IBA host record
         :param fqdn: hostname in FQDN
+        :param ip: IP address IN A
         """
         rest_url = self._construct_url('/record:host')
         params = {'name': fqdn, 'view': self.dns_view}
@@ -239,6 +240,10 @@ class Infoblox(object):
                     "No requested host found: " + fqdn)
 
             host_ref = r_json[0]['_ref']
+            if ip and r_json[0]['ipv4addrs'][0]['ipv4addr'] != str(ip):
+                raise InfobloxArgumentMismatch(
+                    'Mismatch IP address: expecting %s, %s given' %
+                    (r_json[0]['ipv4addrs'][0]['ipv4addr'], str(ip)))
             if host_ref and \
                re.match("record:host\/[^:]+:([^\/]+)\/", host_ref).group(1) == fqdn:
                 rest_url = self._construct_url(host_ref)
