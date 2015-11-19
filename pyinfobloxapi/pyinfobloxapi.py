@@ -165,12 +165,11 @@ class Infoblox(object):
         """
         if re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$", address):
             ipv4addr = 'func:nextavailableip:' + address
-        else:
-            if re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", address):
+        elif re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", address):
                 ipv4addr = address
-            else:
-                raise InfobloxBadInputParameter(
-                    'Expected IP or NET address in CIDR format')
+        else:
+            raise InfobloxBadInputParameter(
+                'Expected IP or NET address in CIDR format')
         rest_url = self._construct_url('/record:host')
         payload = {
             'ipv4addrs': [{
