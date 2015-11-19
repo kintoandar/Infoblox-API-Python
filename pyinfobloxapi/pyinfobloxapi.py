@@ -94,6 +94,12 @@ class Infoblox(object):
         self.dns_view = dns_view
         self.network_view = network_view
         self.verify_ssl = verify_ssl
+        self._setup_session()
+
+    def _setup_session(self):
+        self.s = requests.Session()
+        self.s.auth = (self.user, self.password)
+        self.s.verify = self.verify_ssl
 
     def _construct_url(self, endpoint):
         if endpoint[0] != '/':
@@ -111,10 +117,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/network')
         params = {'network': network, 'network_view': self.network_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code != 200:
                 if 'text' in r_json:
@@ -128,10 +131,7 @@ class Infoblox(object):
             net_ref = r_json[0]['_ref']
             rest_url = self._construct_url(net_ref)
             params = {'_function': 'next_available_ip', 'num': 1}
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              params=params,
-                              verify=self.verify_ssl)
+            r = self.s.post(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 ip_v4 = r_json['ips'][0]
@@ -174,10 +174,7 @@ class Infoblox(object):
             'view': self.dns_view
         }
         try:
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              verify=self.verify_ssl,
-                              data=json.dumps(payload))
+            r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             if r.status_code == 200 or r.status_code == 201:
                 return
@@ -200,10 +197,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/record:txt')
         payload = {'text': text, 'name': fqdn, 'view': self.dns_view}
         try:
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              verify=self.verify_ssl,
-                              data=json.dumps(payload))
+            r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             if r.status_code == 200 or r.status_code == 201:
                 return
@@ -225,10 +219,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/record:host')
         params = {'name': fqdn, 'view': self.dns_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code != 200:
                 if 'text' in r_json:
@@ -247,10 +238,7 @@ class Infoblox(object):
             if host_ref and \
                re.match("record:host\/[^:]+:([^\/]+)\/", host_ref).group(1) == fqdn:
                 rest_url = self._construct_url(host_ref)
-                r = requests.delete(
-                    url=rest_url,
-                    auth=(self.user, self.password),
-                    verify=self.verify_ssl)
+                r = self.s.delete(url=rest_url)
                 if r.status_code == 200:
                     return
                 else:
@@ -273,20 +261,14 @@ class Infoblox(object):
         rest_url = self._construct_url('/record:txt')
         params = {'name': fqdn, 'view': self.dns_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
                     host_ref = r_json[0]['_ref']
                     if host_ref and re.match("record:txt\/[^:]+:([^\/]+)\/", host_ref).group(1) == fqdn:
                         rest_url = self._construct_url(host_ref)
-                        r = requests.delete(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl)
+                        r = self.s.delete(url=rest_url)
                         if r.status_code == 200:
                             return
                         else:
@@ -320,10 +302,7 @@ class Infoblox(object):
             '_return_fields': 'name,aliases'
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -336,11 +315,7 @@ class Infoblox(object):
                         else:
                             payload = {'aliases': [alias_fqdn]}
                         rest_url = self._construct_url(host_ref)
-                        r = requests.put(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl,
-                            data=json.dumps(payload))
+                        r = self.s.put(url=rest_url, data=json.dumps(payload))
                         if r.status_code == 200:
                             return
                         else:
@@ -376,10 +351,7 @@ class Infoblox(object):
             '_return_fields': 'name,aliases'
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -390,11 +362,8 @@ class Infoblox(object):
                             aliases.remove(alias_fqdn)
                             payload = {'aliases': aliases}
                             rest_url = self._construct_url(host_ref)
-                            r = requests.put(
-                                url=rest_url,
-                                auth=(self.user, self.password),
-                                verify=self.verify_ssl,
-                                data=json.dumps(payload))
+                            r = self.s.put(url=rest_url,
+                                           data=json.dumps(payload))
                             if r.status_code == 200:
                                 return
                             else:
@@ -432,10 +401,7 @@ class Infoblox(object):
             'view': self.dns_view
         }
         try:
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              verify=self.verify_ssl,
-                              data=json.dumps(payload))
+            r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             if r.status_code == 200 or r.status_code == 201:
                 return
@@ -457,10 +423,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/record:cname')
         params = {'name': fqdn, 'view': self.dns_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code != 200:
                 if 'text' in r_json:
@@ -480,10 +443,7 @@ class Infoblox(object):
             if cname_ref and \
                re.match("record:cname\/[^:]+:([^\/]+)\/", cname_ref).group(1) == fqdn:
                 rest_url = self._construct_url(cname_ref)
-                r = requests.delete(
-                    url=rest_url,
-                    auth=(self.user, self.password),
-                    verify=self.verify_ssl)
+                r = self.s.delete(url=rest_url)
                 if r.status_code == 200:
                     return
                 else:
@@ -507,10 +467,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/record:cname')
         payload = {'name': name}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             verify=self.verify_ssl,
-                             data=json.dumps(payload))
+            r = self.s.get(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             # RFC1912 - A CNAME can not coexist with any other data, we
             #           should expect utmost one entry
@@ -519,10 +476,7 @@ class Infoblox(object):
                 cname_ref = ibx_cname['_ref']
                 payload = {"canonical": canonical}
                 rest_url = self._construct_url(cname_ref)
-                r = requests.put(url=rest_url,
-                                 auth=(self.user, self.password),
-                                 verify=self.verify_ssl,
-                                 data=json.dumps(payload))
+                r = self.s.put(url=rest_url, data=json.dumps(payload))
                 if r.status_code == 200 or r.status_code == 201:
                     return
                 else:
@@ -548,10 +502,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/range')
         payload = {'start_addr': start_ip_v4, 'end_addr': end_ip_v4}
         try:
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              verify=self.verify_ssl,
-                              data=json.dumps(payload))
+            r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             if r.status_code == 200 or r.status_code == 201:
                 return
@@ -578,20 +529,14 @@ class Infoblox(object):
             'network_view': self.network_view
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
                     range_ref = r_json[0]['_ref']
                     if range_ref:
                         rest_url = self._construct_url(range_ref)
-                        r = requests.delete(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl)
+                        r = self.s.delete(url=rest_url)
                         if r.status_code == 200:
                             return
                         else:
@@ -625,10 +570,7 @@ class Infoblox(object):
         if fields:
             params['_return_fields'] = fields
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -654,9 +596,7 @@ class Infoblox(object):
         rest_url += '?name~=' + fqdn + '&view=' + self.dns_view
         hosts = []
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -686,9 +626,7 @@ class Infoblox(object):
         rest_url += '?name~=' + fqdn + '&view=' + self.dns_view
         hosts = {}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -715,10 +653,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/ipv4address')
         params = {'ip_address': ip_v4, 'network_view': self.network_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -747,10 +682,7 @@ class Infoblox(object):
         params = {'name': fqdn, 'view': self.dns_view}
         ipv4addrs = []
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -785,10 +717,7 @@ class Infoblox(object):
             '_return_fields': 'name,extattrs'
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -831,10 +760,7 @@ class Infoblox(object):
             '_return_fields': fields
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -860,10 +786,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/ipv4address')
         params = {'ip_address': ip_v4, 'network_view': self.network_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -900,9 +823,7 @@ class Infoblox(object):
         rest_url += '&network_view=' + self.network_view
         networks = []
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -939,9 +860,7 @@ class Infoblox(object):
         rest_url += '&view=' + self.dns_view
         hosts = []
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -974,10 +893,7 @@ class Infoblox(object):
             '_return_fields': 'network,extattrs'
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -1017,10 +933,7 @@ class Infoblox(object):
         }
         extattrs = {}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -1031,11 +944,7 @@ class Infoblox(object):
                             extattrs[attr_name]['value'] = attr_value
                         payload = {'extattrs': extattrs}
                         rest_url = self._construct_url(network_ref)
-                        r = requests.put(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl,
-                            data=json.dumps(payload))
+                        r = self.s.put(url=rest_url, data=json.dumps(payload))
                         if r.status_code == 200:
                             return
                         else:
@@ -1069,10 +978,7 @@ class Infoblox(object):
             '_return_fields': 'network,extattrs'
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -1084,11 +990,7 @@ class Infoblox(object):
                                 del extattrs[attribute]
                         payload = {'extattrs': extattrs}
                         rest_url = self._construct_url(network_ref)
-                        r = requests.put(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl,
-                            data=json.dumps(payload))
+                        r = self.s.put(url=rest_url, data=json.dumps(payload))
                         if r.status_code == 200:
                             return
                         else:
@@ -1117,10 +1019,7 @@ class Infoblox(object):
         rest_url = self._construct_url('/network')
         payload = {'network': network, 'network_view': self.network_view}
         try:
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              verify=self.verify_ssl,
-                              data=json.dumps(payload))
+            r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             if r.status_code == 200 or r.status_code == 201:
                 return
@@ -1141,20 +1040,14 @@ class Infoblox(object):
         rest_url = self._construct_url('/network')
         params = {'network': network, 'network_view': self.network_view}
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
                     network_ref = r_json[0]['_ref']
                     if network_ref:
                         rest_url = self._construct_url(network_ref)
-                        r = requests.delete(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl)
+                        r = self.s.delete(url=rest_url)
                         if r.status_code == 200:
                             return
                         else:
@@ -1186,10 +1079,7 @@ class Infoblox(object):
             'network_view': self.network_view
         }
         try:
-            r = requests.post(url=rest_url,
-                              auth=(self.user, self.password),
-                              verify=self.verify_ssl,
-                              data=payload)
+            r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
             if r.status_code == 200 or r.status_code == 201:
                 return
@@ -1213,20 +1103,14 @@ class Infoblox(object):
             'network_view': self.network_view
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
                     network_ref = r_json[0]['_ref']
                     if network_ref:
                         rest_url = self._construct_url(network_ref)
-                        r = requests.delete(
-                            url=rest_url,
-                            auth=(self.user, self.password),
-                            verify=self.verify_ssl)
+                        r = self.s.delete(url=rest_url)
                         if r.status_code == 200:
                             return
                         else:
@@ -1261,10 +1145,7 @@ class Infoblox(object):
             'network_view': self.network_view
         }
         try:
-            r = requests.get(url=rest_url,
-                             auth=(self.user, self.password),
-                             params=params,
-                             verify=self.verify_ssl)
+            r = self.s.get(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
@@ -1275,11 +1156,7 @@ class Infoblox(object):
                         'cidr': str(cidr),
                         'num': 1
                     }
-                    r = requests.post(
-                        url=rest_url,
-                        auth=(self.user, self.password),
-                        params=params,
-                        verify=self.verify_ssl)
+                    r = self.s.post(url=rest_url, params=params)
                     r_json = r.json()
                     if r.status_code == 200:
                         network = r_json['networks'][0]
