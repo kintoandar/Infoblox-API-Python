@@ -95,6 +95,7 @@ class Infoblox(object):
         self.network_view = network_view
         self.verify_ssl = verify_ssl
         self._setup_session()
+        self._setup_extract_record()
 
     def _setup_session(self):
         self.s = requests.Session()
@@ -107,6 +108,12 @@ class Infoblox(object):
 
         return 'https://' + self.host \
                + '/wapi/v' + self.wapi_version + endpoint
+
+    def _setup_extract_record(self):
+        self.re = re.compile("record:\w+\/[^:]+:([^\/]+)\/")
+
+    def _extract_record(self, ref):
+        return self.re.match(ref).group(1)
 
     def get_next_available_ip(self, network):
         """ Implements IBA next_available_ip REST API call
@@ -235,8 +242,7 @@ class Infoblox(object):
                 raise InfobloxArgumentMismatch(
                     'Mismatch IP address: expecting %s, %s given' %
                     (r_json[0]['ipv4addrs'][0]['ipv4addr'], str(ip)))
-            if host_ref and \
-               re.match("record:host\/[^:]+:([^\/]+)\/", host_ref).group(1) == fqdn:
+            if host_ref and self._extract_record(host_ref) == fqdn:
                 rest_url = self._construct_url(host_ref)
                 r = self.s.delete(url=rest_url)
                 if r.status_code == 200:
@@ -266,7 +272,7 @@ class Infoblox(object):
             if r.status_code == 200:
                 if len(r_json) > 0:
                     host_ref = r_json[0]['_ref']
-                    if host_ref and re.match("record:txt\/[^:]+:([^\/]+)\/", host_ref).group(1) == fqdn:
+                    if host_ref and self._extract_record(host_ref) == fqdn:
                         rest_url = self._construct_url(host_ref)
                         r = self.s.delete(url=rest_url)
                         if r.status_code == 200:
@@ -306,15 +312,15 @@ class Infoblox(object):
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
-                    host_ref = r_json[0]['_ref']
-                    if host_ref and re.match("record:host\/[^:]+:([^\/]+)\/", host_ref).group(1) == host_fqdn:
+                    ref = r_json[0]['_ref']
+                    if ref and self._extract_record(ref) == host_fqdn:
                         if 'aliases' in r_json[0]:
                             aliases = r_json[0]['aliases']
                             aliases.append(alias_fqdn)
                             payload = {'aliases': aliases}
                         else:
                             payload = {'aliases': [alias_fqdn]}
-                        rest_url = self._construct_url(host_ref)
+                        rest_url = self._construct_url(ref)
                         r = self.s.put(url=rest_url, data=json.dumps(payload))
                         if r.status_code == 200:
                             return
@@ -325,7 +331,7 @@ class Infoblox(object):
                                 r.raise_for_status()
                     else:
                         raise InfobloxGeneralException(
-                            "Received unexpected host reference: " + host_ref)
+                            "Received unexpected host reference: " + ref)
                 else:
                     raise InfobloxNotFoundException(
                         "No requested host found: " + host_fqdn)
@@ -355,13 +361,13 @@ class Infoblox(object):
             r_json = r.json()
             if r.status_code == 200:
                 if len(r_json) > 0:
-                    host_ref = r_json[0]['_ref']
-                    if host_ref and re.match("record:host\/[^:]+:([^\/]+)\/", host_ref).group(1) == host_fqdn:
+                    ref = r_json[0]['_ref']
+                    if ref and self._extract_record(ref) == host_fqdn:
                         if 'aliases' in r_json[0]:
                             aliases = r_json[0]['aliases']
                             aliases.remove(alias_fqdn)
                             payload = {'aliases': aliases}
-                            rest_url = self._construct_url(host_ref)
+                            rest_url = self._construct_url(ref)
                             r = self.s.put(url=rest_url,
                                            data=json.dumps(payload))
                             if r.status_code == 200:
@@ -376,9 +382,11 @@ class Infoblox(object):
                             raise InfobloxNotFoundException(
                                 "No requested host alias found: " + alias_fqdn)
                     else:
-                        raise InfobloxGeneralException("Received unexpected host reference: " + host_ref)
+                        raise InfobloxGeneralException(
+                            "Received unexpected host reference: " + ref)
                 else:
-                    raise InfobloxNotFoundException("No requested host found: " + host_fqdn)
+                    raise InfobloxNotFoundException(
+                        "No requested host found: " + host_fqdn)
             else:
                 if 'text' in r_json:
                     raise InfobloxGeneralException(r_json['text'])
@@ -440,8 +448,7 @@ class Infoblox(object):
                     'Mismatch canonical IN CNAME: expecting %s, %s given' %
                     (r_json[0]['canonical'], canonical))
 
-            if cname_ref and \
-               re.match("record:cname\/[^:]+:([^\/]+)\/", cname_ref).group(1) == fqdn:
+            if cname_ref and self._extract_record(cname_ref) == fqdn:
                 rest_url = self._construct_url(cname_ref)
                 r = self.s.delete(url=rest_url)
                 if r.status_code == 200:
