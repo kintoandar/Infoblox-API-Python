@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import pyinfobloxapi
-import unittest 
+import unittest
 from mock import Mock
 
 
@@ -18,8 +18,10 @@ class Test(unittest.TestCase):
                                           self.api,
                                           self.dns_view,
                                           self.net_view)
+        self.ref = "record:host/ZG5zLmhvc3QkLl9kZWZhdWx0LmJldGZhaXIuZGV2Lm5" \
+                   "4dHpvby1iNzFiM2Y:nxtzoo-b71b3f.dev.betfair/default"
         self.s = Mock()
- 
+
     def test__construct_url(self):
         endpoint = "/range"
         url = "https://127.0.0.1/wapi/v1.6"
@@ -30,19 +32,17 @@ class Test(unittest.TestCase):
                          self.iba._construct_url(endpoint))
 
     def test__setup_session(self):
-        self.assertEqual(self.iba.s.auth, (self.user, self.password))        
+        self.assertEqual(self.iba.s.auth, (self.user, self.password))
 
     def test__extract_record(self):
-        re1 = "record:host/ZG5zLmhvc3QkLl9kZWZhdWx0LmJldGZhaXIuZGV2Lm54dHpvby" \
-              "1iNzFiM2Y:nxtzoo-b71b3f.dev.betfair/default"
-        re2 = "cenas"
-        self.assertEqual(self.iba._extract_record(re1), 
-                         'nxtzoo-b71b3f.dev.betfair')        
-        self.assertEqual(self.iba._extract_record(re2), '')        
+        ref = "random_string"
+        self.assertEqual(self.iba._extract_record(self.ref),
+                         'nxtzoo-b71b3f.dev.betfair')
+        self.assertEqual(self.iba._extract_record(ref), '')
 
     def test_create_host_record(self):
         pass
 
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()
