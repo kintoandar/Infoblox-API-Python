@@ -160,7 +160,7 @@ class Infoblox(object):
         except Exception:
             raise
 
-    def create_host_record(self, address, fqdn):
+    def create_host_record(self, address, fqdn, ttl=None):
         """ Implements IBA REST API call to create IBA host record
         :param address: IP v4 address or NET v4 address in CIDR format
                         to get next_available_ip from
@@ -174,14 +174,26 @@ class Infoblox(object):
             raise InfobloxBadInputParameter(
                 'Expected IP or NET address in CIDR format')
         rest_url = self._construct_url('/record:host')
-        payload = {
-            'ipv4addrs': [{
-                'configure_for_dhcp': False,
-                'ipv4addr': ipv4addr
-            }],
-            'name': fqdn,
-            'view': self.dns_view
-        }
+        if ttl is None:
+            payload = {
+                'ipv4addrs': [{
+                    'configure_for_dhcp': False,
+                    'ipv4addr': ipv4addr
+                }],
+                'name': fqdn,
+                'view': self.dns_view
+            }
+        else:
+            payload = {
+                'ipv4addrs': [{
+                    'configure_for_dhcp': False,
+                    'ipv4addr': ipv4addr
+                }],
+                'use_ttl': True,
+                'ttl': ttl,
+                'name': fqdn,
+                'view': self.dns_view
+            }
         try:
             r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
