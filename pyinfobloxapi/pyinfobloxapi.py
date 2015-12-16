@@ -165,6 +165,7 @@ class Infoblox(object):
         :param address: IP v4 address or NET v4 address in CIDR format
                         to get next_available_ip from
         :param fqdn: hostname in FQDN
+        :param ttl: if defined, will override the zone ttl
         """
         if re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$", address):
             ipv4addr = 'func:nextavailableip:' + address
