@@ -75,6 +75,7 @@ class Infoblox(object):
         update_network_extattrs
         delete_network_extattrs
         update_host_record
+        get_cname
     """
 
     def __init__(self, ipaddr, user, password, wapi_version,
@@ -1214,6 +1215,30 @@ class Infoblox(object):
                     raise InfobloxGeneralException(r_json['text'])
                 else:
                     r.raise_for_status()
+        except ValueError:
+            raise Exception(r)
+        except Exception:
+            raise
+
+    def get_cname(self, fqdn):
+        """ Implements IBA REST API call to retrieve cname record fields
+        Returns hash table of fields with field name as a hash key
+        :param fqdn: hostname in FQDN
+        """
+        rest_url = self._construct_url('/record:cname')
+        params = {'name': fqdn, 'view': self.dns_view}
+        try:
+            r = self.s.get(url=rest_url, params=params)
+            r_json = r.json()
+            if r.status_code != 200:
+                if 'text' in r_json:
+                    raise InfobloxNotFoundException(r_json['text'])
+                else:
+                    r.raise_for_status()
+            if len(r_json) > 0:
+                return r_json[0]
+            else:
+                raise InfobloxNotFoundException("No hosts found: " + fqdn)
         except ValueError:
             raise Exception(r)
         except Exception:
