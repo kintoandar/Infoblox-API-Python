@@ -1178,11 +1178,11 @@ class Infoblox(object):
             raise
 
     def update_host_record(self, ref, address, ttl=None):
-        # """ Implements IBA REST API call to update IBA host record
-        # :param ref: internal infoblox reference to existing host record
-        # :param address: new IP for the given 'ref'
-        # :param ttl: if defined, will override the previous ttl
-        # """
+        """ Implements IBA REST API call to update IBA host record
+        :param ref: internal infoblox reference to existing host record
+        :param address: new IP for the given 'ref'
+        :param ttl: if defined, will override the previous ttl
+        """
         if re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", address):
             ipv4addr = address
         else:
