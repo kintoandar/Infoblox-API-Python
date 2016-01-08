@@ -415,17 +415,27 @@ class Infoblox(object):
         except Exception:
             raise
 
-    def create_cname_record(self, canonical, name):
+    def create_cname_record(self, canonical, name, ttl=None):
         """ Implements IBA REST API call to create IBA cname record
         :param canonical: canonical name in FQDN format
         :param name: the name for a CNAME record in FQDN format
+        :param ttl: if defined, will override the zone ttl
         """
         rest_url = self._construct_url('/record:cname')
-        payload = {
-            'canonical': canonical,
-            'name': name,
-            'view': self.dns_view
-        }
+        if ttl is None:
+            payload = {
+                'canonical': canonical,
+                'name': name,
+                'view': self.dns_view
+            }
+        else:
+            payload = {
+                'canonical': canonical,
+                'name': name,
+                'use_ttl': True,
+                'ttl': ttl,
+                'view': self.dns_view
+            }
         try:
             r = self.s.post(url=rest_url, data=json.dumps(payload))
             r_json = r.json()
@@ -484,7 +494,7 @@ class Infoblox(object):
         except Exception:
             raise
 
-    def update_cname_record(self, canonical, name):
+    def update_cname_record(self, canonical, name, ttl=None):
         """ Implements IBA REST API call to update or repoint IBA cname record
         :param canonical: canonical name in FQDN format
         :param name: the name for the new CNAME record in FQDN format
@@ -505,7 +515,10 @@ class Infoblox(object):
                 else:
                     r.raise_for_status()
             cname_ref = r_json[0]['_ref']
-            payload = {"canonical": canonical}
+            if ttl is None:
+                payload = {"canonical": canonical}
+            else:
+                payload = {"canonical": canonical, "ttl": ttl}
             rest_url = self._construct_url(cname_ref)
             r = self.s.put(url=rest_url, data=json.dumps(payload))
             if r.status_code == 200 or r.status_code == 201:
