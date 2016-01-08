@@ -74,6 +74,7 @@ class Infoblox(object):
         get_network_extattrs
         update_network_extattrs
         delete_network_extattrs
+        update_host_record
     """
 
     def __init__(self, ipaddr, user, password, wapi_version,
@@ -1171,6 +1172,48 @@ class Infoblox(object):
                 else:
                     r.raise_for_status()
             return r_json['networks'][0]
+        except ValueError:
+            raise Exception(r)
+        except Exception:
+            raise
+
+    def update_host_record(self, ref, address, ttl=None):
+        # """ Implements IBA REST API call to update IBA host record
+        # :param ref: internal infoblox reference to existing host record
+        # :param address: new IP for the given 'ref'
+        # :param ttl: if defined, will override the previous ttl
+        # """
+        if re.match("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", address):
+            ipv4addr = address
+        else:
+            raise InfobloxBadInputParameter(
+                'Expected IP address format')
+        
+        rest_url = self._construct_url(ref)
+        if ttl is None:
+            payload = {
+                'ipv4addrs': [{
+                    'ipv4addr': ipv4addr
+                }]
+            }
+        else:
+            payload = {
+                'ipv4addrs': [{
+                    'ipv4addr': ipv4addr
+                }],
+                'use_ttl': True,
+                'ttl': ttl
+            }
+        try:
+            r = self.s.put(url=rest_url, data=json.dumps(payload))
+            r_json = r.json()
+            if r.status_code == 200 or r.status_code == 201:
+                return
+            else:
+                if 'text' in r_json:
+                    raise InfobloxGeneralException(r_json['text'])
+                else:
+                    r.raise_for_status()
         except ValueError:
             raise Exception(r)
         except Exception:
