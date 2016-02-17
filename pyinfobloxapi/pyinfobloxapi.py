@@ -141,8 +141,13 @@ class Infoblox(object):
                     "No requested network found: " + network)
 
             net_ref = r_json[0]['_ref']
-            rest_url = self._construct_url(net_ref)
-            params = {'_function': 'next_available_ip', 'num': 1}
+            if self.wapi_version == '1.1':
+                rest_url = self._construct_url(net_ref +
+                                               '?_function=next_available_ip')
+                params = {'num': 1}
+            else:
+                rest_url = self._construct_url(net_ref)
+                params = {'_function': 'next_available_ip', 'num': 1}
             r = self.s.post(url=rest_url, params=params)
             r_json = r.json()
             if r.status_code == 200:
@@ -1202,7 +1207,7 @@ class Infoblox(object):
         else:
             raise InfobloxBadInputParameter(
                 'Expected IP address format')
-        
+
         rest_url = self._construct_url(ref)
         if ttl is None:
             payload = {
