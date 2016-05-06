@@ -19,7 +19,7 @@ class Test(unittest.TestCase):
                                           self.dns_view,
                                           self.net_view)
         self.ref = "record:host/ZG5zLmhvc3QkLl9kZWZhdWx0LmJldGZhaXIuZGV2Lm5" \
-                   "4dHpvby1iNzFiM2Y:nxtzoo-b71b3f.dev.betfair/default"
+                   "4dHpvby1iNzFiM2Y:example.dev.inet/default"
         self.s = Mock()
 
     def test__construct_url(self):
@@ -37,7 +37,7 @@ class Test(unittest.TestCase):
     def test__extract_record(self):
         ref = "random_string"
         self.assertEqual(self.iba._extract_record(self.ref),
-                         'nxtzoo-b71b3f.dev.betfair')
+                         'example.dev.inet')
         self.assertEqual(self.iba._extract_record(ref), '')
 
     def test_create_host_record(self):
